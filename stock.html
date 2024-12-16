@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>所有股票資訊</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      th {
+        cursor: pointer;
+      }
+      .navbar {
+        background-color: #000000; /* Blue */
+      }
+      .table-dark {
+        background-color: #343a40; /* Dark Gray */
+      }
+      .table-hover tbody tr:hover {
+        background-color: #d6eaf8; /* Light Blue */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 導覽列 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">資料查詢</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="air.html">空氣品質指標</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="stock.html"
+                >所有股票資訊</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="weather.html">地圖</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 內容區 -->
+    <div class="container mt-5">
+      <h1 class="mb-4 text-center">所有股票資訊</h1>
+
+      <!-- 搜尋欄位 -->
+      <div class="mb-4">
+        <input
+          type="text"
+          id="search-input"
+          class="form-control"
+          placeholder="輸入股票代碼或名稱進行搜尋..."
+        />
+      </div>
+
+      <!-- 資料表格 -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th onclick="sortTable('Code')">
+                股票代碼 <span id="Code-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('Name')">
+                股票名稱 <span id="Name-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('TradeVolume')">
+                交易量 <span id="TradeVolume-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('TradeValue')">
+                交易金額 <span id="TradeValue-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('OpeningPrice')">
+                開盤價 <span id="OpeningPrice-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('HighestPrice')">
+                最高價 <span id="HighestPrice-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('LowestPrice')">
+                最低價 <span id="LowestPrice-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('ClosingPrice')">
+                收盤價 <span id="ClosingPrice-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('Change')">
+                漲跌 <span id="Change-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('Transaction')">
+                成交筆數 <span id="Transaction-sort-symbol"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="stock-table"></tbody>
+        </table>
+      </div>
+
+      <!-- 顯示錯誤訊息 -->
+      <div id="error-message" class="alert alert-danger" style="display: none">
+        <strong>錯誤！</strong> 無法載入資料，請稍後再試。
+      </div>
+    </div>
+
+    <script>
+      let allData = []; // 保存所有股票資料
+      const stockTable = document.getElementById("stock-table");
+      const searchInput = document.getElementById("search-input");
+      const errorMessage = document.getElementById("error-message");
+      let currentSortColumn = ""; // 目前排序的欄位
+      let currentSortOrder = "asc"; // 當前排序順序，'asc' 為升冪，'desc' 為降冪
+
+      // 載入資料
+      fetch("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL")
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && Array.isArray(data)) {
+            allData = data;
+            renderTable(allData); // 初始載入顯示所有資料
+            sortTable("Code"); // 預設排序：股票代碼由小到大
+          } else {
+            showError(); // 顯示錯誤訊息
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          showError(); // 顯示錯誤訊息
+        });
+
+      // 渲染表格
+      function renderTable(data) {
+        stockTable.innerHTML = ""; // 清空表格內容
+        data.forEach((stock) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+          <td>${stock.Code}</td>
+          <td>${stock.Name}</td>
+          <td>${stock.TradeVolume}</td>
+          <td>${stock.TradeValue}</td>
+          <td>${stock.OpeningPrice}</td>
+          <td>${stock.HighestPrice}</td>
+          <td>${stock.LowestPrice}</td>
+          <td>${stock.ClosingPrice}</td>
+          <td>${stock.Change}</td>
+          <td>${stock.Transaction}</td>
+        `;
+          stockTable.appendChild(tr);
+        });
+      }
+
+      // 顯示錯誤訊息
+      function showError() {
+        errorMessage.style.display = "block"; // 顯示錯誤訊息
+      }
+
+      // 搜尋功能
+      searchInput.addEventListener("input", () => {
+        const keyword = searchInput.value.toLowerCase(); // 取得輸入值
+        const filteredData = allData.filter(
+          (stock) =>
+            stock.Code.toLowerCase().includes(keyword) ||
+            stock.Name.toLowerCase().includes(keyword)
+        );
+        renderTable(filteredData); // 根據搜尋結果渲染表格
+      });
+
+      // 排序功能
+      function sortTable(column) {
+        // 檢查是否為相同欄位，如果是則切換排序順序
+        if (currentSortColumn === column) {
+          currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
+        } else {
+          currentSortColumn = column;
+          currentSortOrder = "asc";
+        }
+
+        const sortedData = [...allData].sort((a, b) => {
+          let valueA = a[column];
+          let valueB = b[column];
+
+          // 判斷是否為數字類型
+          if (!isNaN(valueA) && !isNaN(valueB)) {
+            valueA = parseFloat(valueA);
+            valueB = parseFloat(valueB);
+          } else {
+            valueA = valueA.toString().toLowerCase();
+            valueB = valueB.toString().toLowerCase();
+          }
+
+          // 進行排序
+          if (valueA < valueB) {
+            return currentSortOrder === "asc" ? -1 : 1;
+          } else if (valueA > valueB) {
+            return currentSortOrder === "asc" ? 1 : -1;
+          } else {
+            return 0;
+          }
+        });
+
+        renderTable(sortedData); // 根據排序結果渲染表格
+
+        updateSortSymbols(column); // 更新排序符號
+      }
+
+      // 更新排序符號
+      function updateSortSymbols(column) {
+        // 清除所有排序符號
+        const sortSymbols = document.querySelectorAll("th span");
+        sortSymbols.forEach((symbol) => (symbol.innerHTML = ""));
+
+        // 根據當前的排序欄位和排序順序，顯示符號
+        const sortSymbol = currentSortOrder === "asc" ? "↑" : "↓";
+        const columnSortSymbol = document.getElementById(
+          `${column}-sort-symbol`
+        );
+        columnSortSymbol.innerHTML = sortSymbol;
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

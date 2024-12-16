@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>空氣品質指標</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      th {
+        cursor: pointer;
+      }
+      .navbar {
+        background-color: #000000; /* Blue */
+      }
+      .table-dark {
+        background-color: #343a40; /* Dark Gray */
+      }
+      .table-hover tbody tr:hover {
+        background-color: #d6eaf8; /* Light Blue */
+      }
+      thead {
+        background-color: #343a40; /* Dark Gray */
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 導覽列 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">資料查詢</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="air.html"
+                >空氣品質指標</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="stock.html">所有股票資訊</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="weather.html">地圖</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 頁面內容 -->
+    <div class="container mt-5">
+      <h1 class="text-center">空氣品質指標 (AQI)</h1>
+      <p class="text-center">查詢全台空氣品質監測數據</p>
+
+      <!-- 搜尋欄位 -->
+      <div class="mb-4">
+        <input
+          type="text"
+          id="search-input"
+          class="form-control"
+          placeholder="輸入測站名稱或縣市進行搜尋..."
+        />
+      </div>
+
+      <!-- 資料表格 -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th onclick="sortTable('sitename')">
+                測站名稱 <span id="sitename-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('county')">
+                縣市 <span id="county-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('aqi')">
+                AQI <span id="aqi-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('pollutant')">
+                污染物 <span id="pollutant-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('status')">
+                狀態 <span id="status-sort-symbol"></span>
+              </th>
+              <th onclick="sortTable('publishtime')">
+                發布時間 <span id="publishtime-sort-symbol"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="aqi-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Script -->
+    <script>
+      let allData = []; // 保存所有空氣品質數據
+      const aqiTable = document.getElementById("aqi-table");
+      const searchInput = document.getElementById("search-input");
+      let currentSortColumn = ""; // 目前排序的欄位
+      let currentSortOrder = "asc"; // 當前排序順序，'asc' 為升冪，'desc' 為降冪
+
+      // 從 API 獲取數據
+      fetch(
+        "https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=e8dd42e6-9b8b-43f8-991e-b3dee723a52d&limit=1000&sort=ImportDate%20desc&format=JSON"
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          allData = data.records; // 取得數據記錄
+          renderTable(allData); // 初始載入所有資料
+        })
+        .catch((error) => console.error("Error:", error));
+
+      // 渲染表格
+      function renderTable(data) {
+        aqiTable.innerHTML = ""; // 清空表格內容
+        data.forEach((record) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+                    <td>${record.sitename}</td>
+                    <td>${record.county}</td>
+                    <td>${record.aqi || "N/A"}</td>
+                    <td>${record.pollutant || "無"}</td>
+                    <td>${record.status}</td>
+                    <td>${record.publishtime}</td>
+                `;
+          aqiTable.appendChild(tr);
+        });
+      }
+
+      // 搜尋功能
+      searchInput.addEventListener("input", () => {
+        const keyword = searchInput.value.toLowerCase(); // 取得輸入值
+        const filteredData = allData.filter(
+          (record) =>
+            record.sitename.toLowerCase().includes(keyword) ||
+            record.county.toLowerCase().includes(keyword)
+        );
+        renderTable(filteredData); // 根據搜尋結果渲染表格
+      });
+
+      // 排序功能
+      function sortTable(column) {
+        // 檢查是否為相同欄位，如果是則切換排序順序
+        if (currentSortColumn === column) {
+          currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
+        } else {
+          currentSortColumn = column;
+          currentSortOrder = "asc";
+        }
+
+        const sortedData = [...allData].sort((a, b) => {
+          let valueA = a[column];
+          let valueB = b[column];
+
+          // 判斷是否為數字類型
+          if (!isNaN(valueA) && !isNaN(valueB)) {
+            valueA = parseFloat(valueA);
+            valueB = parseFloat(valueB);
+          } else {
+            valueA = valueA.toString().toLowerCase();
+            valueB = valueB.toString().toLowerCase();
+          }
+
+          // 進行排序
+          if (valueA < valueB) {
+            return currentSortOrder === "asc" ? -1 : 1;
+          } else if (valueA > valueB) {
+            return currentSortOrder === "asc" ? 1 : -1;
+          } else {
+            return 0;
+          }
+        });
+
+        renderTable(sortedData); // 根據排序結果渲染表格
+        updateSortSymbols(column); // 更新排序符號
+      }
+
+      // 更新排序符號
+      function updateSortSymbols(column) {
+        // 清除所有排序符號
+        const sortSymbols = document.querySelectorAll("th span");
+        sortSymbols.forEach((symbol) => (symbol.innerHTML = ""));
+
+        // 根據當前的排序欄位和排序順序，顯示符號
+        const sortSymbol = currentSortOrder === "asc" ? "↑" : "↓";
+        const columnSortSymbol = document.getElementById(
+          `${column}-sort-symbol`
+        );
+        columnSortSymbol.innerHTML = sortSymbol;
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
